@@ -9,11 +9,22 @@ Claude, plus memory palaces for the material that actually suits them.
 
 ## What you need
 
-- **Node 22+** and this repo cloned.
-- **Claude Code** installed and logged in (`claude --version`). The app shells out to it to
-  grade answers, and blocks review if it can't.
-- **The [`/teach`](https://github.com/mattpocock/skills) skill** installed. Check with
-  `ls ~/.claude/skills/teach`.
+- **Node 22.18+**, or 24+. The tests run through Node's own TypeScript stripping, on by
+  default only from 22.18.
+- **macOS or Linux.** The app spawns `claude` by name.
+- **This repo** — `git clone git@github.com:EduardoCanale/learn-app.git` — and a network
+  connection the first time you start it, for the fonts.
+- **Claude Code 2.1.169 or newer**, logged in. Check with `claude --version`. Grading is one
+  `claude -p --model sonnet` call per answer, a few seconds each, and review blocks rather
+  than degrading if it can't reach it.
+- **The [`/teach`](https://github.com/mattpocock/skills) skill.**
+
+  ```bash
+  claude plugins install mattpocock-skills
+  ```
+
+  Or `npx skills@latest add mattpocock/skills` for editable copies. To check: start `claude`
+  and type `/teach` — the two routes put the files in different places.
 
 ## First run
 
@@ -35,6 +46,9 @@ Real places you know cold, each as an ordered walk of fixed positions. Memory pa
 built on these and Claude cannot invent one for you. Twenty minutes, once — the file
 explains the rules. Skip it and you lose palaces, not the rest of the app.
 
+Every topic page re-reads the root file, so a Route you add next month reaches the
+workspaces that already exist.
+
 **3. Create a topic in the browser.** Open http://localhost:3000, type a name (`rust`),
 hit Create. That scaffolds `workspaces/rust/` with the folders, the teaching contract
 (`CLAUDE.md`) and a copy of your places.
@@ -53,6 +67,9 @@ The session writes `MISSION.md`, lessons, and the probes that become your review
 **5. Recall it, back in the browser.** Refresh http://localhost:3000. The topic now shows
 probes due. Hit **Recall** and type each answer from memory — no card to flip. Claude grades
 it against the lesson, hints until you produce it yourself, and reschedules.
+
+Chrome is English or Spanish, toggle bottom right. Lessons and grading stay in the
+material's own language.
 
 ## The daily loop
 
@@ -74,7 +91,7 @@ queued for Claude to teach at the start of your next session.
 Short version of the app command, if you want it:
 
 ```bash
-alias learn='cd ~/Study/learn-app && npm run dev'
+alias learn='cd /path/to/learn-app && npm run dev'
 ```
 
 ## How it fits together
@@ -114,13 +131,15 @@ Two rules keep it coherent:
 ```
 learn-app/
   app/                Next.js pages and the two API routes
-  lib/                scheduling, probe loading, the Claude call, log folding
+  lib/                scheduling, probe loading, the Claude call, log folding, i18n
   templates/CLAUDE.md the contract scaffolded into every workspace
   PLACES.md           your real routes, the source for every palace
   workspaces/         your topics (gitignored — this is your data)
     rust/
-      MISSION.md lessons/ reference/ learning-records/ assets/   <- /teach
+      MISSION.md RESOURCES.md NOTES.md lessons/ reference/       <- /teach
+      learning-records/ assets/                                  <- /teach
       probes/ palaces/                                           <- /teach, for this app
+      CLAUDE.md PLACES.md                                        <- the app
       .learn/reviews.jsonl .learn/struggles.jsonl                <- append-only logs
   docs/adr/           why it is built this way
   CONTEXT.md          the vocabulary
@@ -155,5 +174,6 @@ the contract binding.
 npm test
 ```
 
-Covers the parts that would break silently: the verdict-to-FSRS mapping, replaying the review
-log into card state, session interleaving, and anchored section extraction.
+Covers the parts that would break silently: the verdict-to-FSRS mapping, replaying
+the review log into card state, session interleaving, anchored section extraction, and the
+locale fallback and plural agreement behind the language toggle.
