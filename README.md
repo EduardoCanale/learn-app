@@ -7,20 +7,75 @@ in the terminal; this remembers for you.
 three weeks. This fills that half: spaced repetition over free-recall questions, graded by
 Claude, plus memory palaces for the material that actually suits them.
 
-## Run it
+## What you need
+
+- **Node 22+** and this repo cloned.
+- **Claude Code** installed and logged in (`claude --version`). The app shells out to it to
+  grade answers, and blocks review if it can't.
+- **The [`/teach`](https://github.com/mattpocock/skills) skill** installed. Check with
+  `ls ~/.claude/skills/teach`.
+
+## First run
+
+Once, in this order. Steps 1–2 are setup; step 3 onward is the loop you repeat forever.
+
+**1. Install and start the app.**
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
+npm run dev          # http://localhost:3000
 ```
 
-Add an alias if you want the short version:
+Leave it running. It is a normal local web app — nothing runs in the background, nothing
+notifies you.
+
+**2. Write your places** in `PLACES.md`, at the repo root.
+
+Real places you know cold, each as an ordered walk of fixed positions. Memory palaces are
+built on these and Claude cannot invent one for you. Twenty minutes, once — the file
+explains the rules. Skip it and you lose palaces, not the rest of the app.
+
+**3. Create a topic in the browser.** Open http://localhost:3000, type a name (`rust`),
+hit Create. That scaffolds `workspaces/rust/` with the folders, the teaching contract
+(`CLAUDE.md`) and a copy of your places.
+
+**4. Teach it, in a terminal.** The app deliberately cannot do this part — Claude draws the
+mission out of you in conversation.
+
+```bash
+cd workspaces/rust
+claude
+/teach
+```
+
+The session writes `MISSION.md`, lessons, and the probes that become your review queue.
+
+**5. Recall it, back in the browser.** Refresh http://localhost:3000. The topic now shows
+probes due. Hit **Recall** and type each answer from memory — no card to flip. Claude grades
+it against the lesson, hints until you produce it yourself, and reschedules.
+
+## The daily loop
+
+Both, but not for the same thing:
+
+| You want | Where | What |
+| --- | --- | --- |
+| New material, or a gap taught properly | terminal, inside `workspaces/<topic>` | `claude` then `/teach` |
+| To keep what you already learned | browser | `npm run dev`, hit Recall |
+| To know which you need | browser | the home page says what's due |
+
+Run `/teach` when you want to move forward. Review in the browser whenever something is due
+— that is most days, and it is the half `/teach` alone cannot do.
+
+The two halves talk through files in the workspace, so **restart nothing**: a `/teach`
+session writing lessons shows up on a browser refresh, and failures you hit in review are
+queued for Claude to teach at the start of your next session.
+
+Short version of the app command, if you want it:
 
 ```bash
 alias learn='cd ~/Study/learn-app && npm run dev'
 ```
-
-Nothing runs in the background and nothing notifies you. Adherence is a habit, not a daemon.
 
 ## How it fits together
 
@@ -53,15 +108,6 @@ Two rules keep it coherent:
   pedagogy.
 - **Claude is only ever called one-shot.** `claude -p` with zero tools, structured JSON out,
   seconds not minutes. Anything needing a conversation queues to your terminal instead.
-
-## Set-up
-
-1. **Edit `PLACES.md`.** Write out a few real places you know cold as ordered walks. Memory
-   palaces are built on these, and Claude cannot invent one for you. Twenty minutes, once.
-2. **Create a topic** in the app, then run `/teach` inside it. Claude draws the mission out of
-   you — the app deliberately can't.
-3. Every workspace gets a `CLAUDE.md` that tells Claude how to write probes and drain
-   struggles. It is scaffolded for you; keep it.
 
 ## Layout
 
