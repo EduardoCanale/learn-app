@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Newsreader, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
+import LangToggle from "./LangToggle";
 import ThemeToggle from "./ThemeToggle";
+import { getLocale, getStrings } from "@/lib/i18n.server";
 
 // The question is something you read and think about; the machinery around it
 // is instrumentation. Two registers, deliberately different.
@@ -9,15 +11,17 @@ const display = Newsreader({ subsets: ["latin"], variable: "--font-display", dis
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-sans", display: "swap" });
 const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400"], variable: "--font-mono", display: "swap" });
 
-export const metadata: Metadata = {
-  title: "Learn",
-  description: "Spaced retrieval and memory palaces over your /teach workspaces",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getStrings();
+  return { title: t.title, description: t.description };
+}
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const locale = await getLocale();
+
   return (
     <html
-      lang="en"
+      lang={locale}
       className={`${display.variable} ${sans.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
@@ -32,7 +36,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <div className="shell">{children}</div>
-        <ThemeToggle />
+        {/* Theme renders nothing until it mounts, so it sits first and grows
+            leftwards — the language button stays pinned and never jumps. */}
+        <div className="toggles">
+          <ThemeToggle locale={locale} />
+          <LangToggle locale={locale} />
+        </div>
       </body>
     </html>
   );

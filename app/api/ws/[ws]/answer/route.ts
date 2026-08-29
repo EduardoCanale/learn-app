@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ClaudeUnavailable, grade, type Turn } from "@/lib/claude";
+import { getStrings } from "@/lib/i18n.server";
 import { append, read } from "@/lib/jsonl";
 import { inWorkspace, reviewsLog, strugglesLog, workspaceName } from "@/lib/paths";
 import { loadProbes, palaceText } from "@/lib/probes";
@@ -9,23 +10,24 @@ import { openStruggles } from "@/lib/workspace";
 
 export async function POST(request: Request, { params }: { params: Promise<{ ws: string }> }) {
   const { ws: raw } = await params;
+  const t = await getStrings();
   let ws: string;
   try {
     ws = workspaceName(raw);
   } catch {
-    return NextResponse.json({ error: "Unknown topic." }, { status: 404 });
+    return NextResponse.json({ error: t.unknownTopic }, { status: 404 });
   }
 
   const body = await request.json().catch(() => null);
   const probeId: unknown = body?.probe;
   const turns: unknown = body?.turns;
   if (typeof probeId !== "string" || !Array.isArray(turns) || turns.length === 0) {
-    return NextResponse.json({ error: "Bad request." }, { status: 400 });
+    return NextResponse.json({ error: t.badRequest }, { status: 400 });
   }
   const history = turns as Turn[];
 
   const probe = (await loadProbes(ws)).find((p) => p.id === probeId);
-  if (!probe) return NextResponse.json({ error: "Unknown probe." }, { status: 404 });
+  if (!probe) return NextResponse.json({ error: t.unknownProbe }, { status: 404 });
 
   // The app inlines the source; the Claude call gets no tools (ADR 0010).
   const [rel, anchor] = probe.source.split("#");

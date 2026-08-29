@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { dict, type Locale, type Strings } from "@/lib/i18n";
 
 type Probe = { id: string; kind: "recall" | "walk"; prompt: string };
 type Turn = { answer: string; hint?: string; reprobe?: string };
@@ -17,13 +18,16 @@ type Scheduled = { days: number; curve: number[]; learning: boolean };
 
 export default function ReviewSession({
   ws,
+  locale,
   probes,
   remaining,
 }: {
   ws: string;
+  locale: Locale;
   probes: Probe[];
   remaining: number;
 }) {
+  const t = dict[locale];
   const [index, setIndex] = useState(0);
   const [turns, setTurns] = useState<Turn[]>([]);
   const [answer, setAnswer] = useState("");
@@ -42,12 +46,11 @@ export default function ReviewSession({
     return (
       <>
         <p className="empty">
-          Session done. {remaining > probes.length
-            ? `${remaining - probes.length} still due — start another when you have the attention for it.`
-            : "Everything due is cleared."}
+          {t.sessionDone}{" "}
+          {remaining > probes.length ? t.stillDue(remaining - probes.length) : t.allCleared}
         </p>
         <div className="row" style={{ marginTop: "1.5rem" }}>
-          <Link href={`/ws/${ws}`}><button className="quiet">Back to {ws}</button></Link>
+          <Link href={`/ws/${ws}`}><button className="quiet">{t.backTo(ws)}</button></Link>
         </div>
       </>
     );
@@ -69,9 +72,7 @@ export default function ReviewSession({
     if (!res || !res.ok) {
       const body = await res?.json().catch(() => ({}));
       setError(
-        body?.unavailable
-          ? `Can't reach Claude, so this can't be graded. ${body.error}`
-          : (body?.error ?? "Something went wrong grading that."),
+        body?.unavailable ? t.claudeUnreachable(body.error) : (body?.error ?? t.gradingFailed),
       );
       return;
     }
@@ -109,32 +110,32 @@ export default function ReviewSession({
   return (
     <>
       <div className="progress">
-        <span>{index + 1} of {probes.length}</span>
-        <span>{remaining} due</span>
+        <span>{t.progress(index + 1, probes.length)}</span>
+        <span>{t.dueCount(remaining)}</span>
       </div>
 
       <h2 className="probe">
-        {probe.kind === "walk" && <span className="probe-kind">Walk</span>}
-        {turns.at(-1)?.reprobe && <span className="probe-kind">Asked again</span>}
+        {probe.kind === "walk" && <span className="probe-kind">{t.walk}</span>}
+        {turns.at(-1)?.reprobe && <span className="probe-kind">{t.askedAgain}</span>}
         {asked}
       </h2>
 
       {turns.at(-1)?.reprobe && (
         <p className="asked-first">
-          <b>Originally asked:</b> {probe.prompt}
+          <b>{t.originallyAsked}</b> {probe.prompt}
         </p>
       )}
 
       {turns.length > 0 && (
         <ol className="ladder">
-          {turns.map((t, i) => (
-            <li key={i} className={t.hint ? "hint" : undefined}>
-              <span className="rung">You said</span>
-              <p className="said" style={{ margin: "0 0 0.7rem" }}>{t.answer}</p>
-              {t.hint && (
+          {turns.map((turn, i) => (
+            <li key={i} className={turn.hint ? "hint" : undefined}>
+              <span className="rung">{t.youSaid}</span>
+              <p className="said" style={{ margin: "0 0 0.7rem" }}>{turn.answer}</p>
+              {turn.hint && (
                 <>
-                  <span className="rung rung-hint">Hint {i + 1}</span>
-                  <p style={{ margin: 0 }}>{t.hint}</p>
+                  <span className="rung rung-hint">{t.hintN(i + 1)}</span>
+                  <p style={{ margin: 0 }}>{turn.hint}</p>
                 </>
               )}
             </li>
@@ -144,7 +145,11 @@ export default function ReviewSession({
 
       {verdict && verdict.outcome !== "retrieval_failure" && verdict.feedback && (
         <section className={`verdict${closed ? " ok" : ""}`}>
-          <h3>{closed ? (verdict.completeness === "partial" ? "Right, but thin" : "Right") : "Not what the lesson says"}</h3>
+          <h3>
+            {closed
+              ? verdict.completeness === "partial" ? t.rightButThin : t.right
+              : t.notWhatLessonSays}
+          </h3>
           <p>{verdict.feedback}</p>
 
           {sourceHtml && (
@@ -152,7 +157,7 @@ export default function ReviewSession({
             <div className="source" dangerouslySetInnerHTML={{ __html: sourceHtml }} />
           )}
 
-          {scheduled && <DecayStrip {...scheduled} />}
+          {scheduled && <DecayStrip {...scheduled} t={t} />}
         </section>
       )}
 
@@ -161,7 +166,7 @@ export default function ReviewSession({
       {closed ? (
         <div className="actions">
           <button onClick={next} autoFocus>
-            {index + 1 < probes.length ? "Next probe" : "Finish"}
+            {index + 1 < probes.length ? t.nextProbe : t.finish}
           </button>
         </div>
       ) : (
@@ -173,13 +178,13 @@ export default function ReviewSession({
             onKeyDown={(e) => {
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submit();
             }}
-            placeholder="From memory. Don't look it up — a wrong answer here is worth more than a copied one."
-            aria-label="Your answer"
+            placeholder={t.answerPlaceholder}
+            aria-label={t.yourAnswer}
             disabled={busy}
           />
           <div className="actions">
             <button onClick={submit} disabled={busy || !answer.trim()}>
-              {busy ? "Checking…" : "Check"}
+              {busy ? t.checking : t.check}
             </button>
             <span className="hint-key">⌘↵</span>
           </div>
@@ -199,14 +204,14 @@ export default function ReviewSession({
 const FLOOR = 0.8;
 const TARGET = 0.9;
 
-function DecayStrip({ days, curve, learning }: Scheduled) {
+function DecayStrip({ days, curve, learning, t }: Scheduled & { t: Strings }) {
   if (learning) {
     return (
       <figure className="decay" style={{ margin: 0 }}>
         <figcaption>
-          Back in <b>{formatDays(days)}</b>.
+          {t.backInBefore}<b>{formatDays(days, t)}</b>{t.backInAfter}
           <br />
-          Still in the learning steps — no decay curve yet.
+          {t.learningSteps}
         </figcaption>
       </figure>
     );
@@ -228,16 +233,16 @@ function DecayStrip({ days, curve, learning }: Scheduled) {
         <circle cx={x(curve.length - 1)} cy={y(end)} r="2.5" fill="var(--decay)" />
       </svg>
       <figcaption>
-        Falling to the 90% line in <b>{formatDays(days)}</b>.
+        {t.fallingToBefore}<b>{formatDays(days, t)}</b>{t.fallingToAfter}
         <br />
-        That is the day it asks again.
+        {t.asksAgainThatDay}
       </figcaption>
     </figure>
   );
 }
 
-function formatDays(days: number): string {
-  if (days < 1) return `${Math.max(1, Math.round(days * 24))}h`;
-  if (days < 60) return `${Math.round(days)}d`;
-  return `${Math.round(days / 30)} months`;
+function formatDays(days: number, t: Strings): string {
+  if (days < 1) return t.hours(Math.max(1, Math.round(days * 24)));
+  if (days < 60) return t.days(Math.round(days));
+  return t.months(Math.round(days / 30));
 }
