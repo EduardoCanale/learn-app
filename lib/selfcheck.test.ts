@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import { Rating, State } from "ts-fsrs";
 
+import { dict, toLocale } from "./i18n.ts";
 import { interleave, isDue, ratingFor, replay, type ReviewEvent } from "./scheduler.ts";
 import { sliceSection, toText } from "./source.ts";
 
@@ -85,4 +86,22 @@ test("a Probe's anchor pulls out its own section, not the whole lesson", () => {
 test("a missing anchor degrades to the whole lesson rather than nothing", () => {
   const html = `<html><body><h2 id="intro">Intro</h2><p>Content.</p></body></html>`;
   assert.match(toText(sliceSection(html, "gone")), /Content/);
+});
+
+test("an unrecognised locale cookie falls back to English", () => {
+  assert.equal(toLocale("es"), "es");
+  assert.equal(toLocale("en"), "en");
+  assert.equal(toLocale("fr"), "en");
+  assert.equal(toLocale(undefined), "en");
+  assert.equal(toLocale("constructor"), "en", "a prototype key is not a locale");
+});
+
+test("counted strings agree on singular and plural in both languages", () => {
+  assert.equal(dict.en.dueAcross(1, 1), "1 due across 1 topic");
+  assert.equal(dict.en.dueAcross(2, 3), "2 due across 3 topics");
+  assert.equal(dict.es.dueAcross(1, 1), "1 pendiente en 1 tema");
+  assert.equal(dict.es.dueAcross(2, 3), "2 pendientes en 3 temas");
+  assert.equal(dict.en.recallProbes(1), "Recall 1 probe");
+  assert.equal(dict.es.recallProbes(1), "Recordar 1 prueba");
+  assert.equal(dict.es.recallProbes(4), "Recordar 4 pruebas");
 });

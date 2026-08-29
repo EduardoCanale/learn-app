@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getStrings } from "@/lib/i18n.server";
 import { loadPalaces } from "@/lib/probes";
 import { listLessons, openStruggles, summarise, syncPlaces } from "@/lib/workspace";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function Workspace({ params }: { params: Promise<{ ws: string }> }) {
   const { ws } = await params;
+  const t = await getStrings();
 
   let summary, palaces, lessons, struggles;
   try {
@@ -27,13 +29,13 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
     <>
       <header className="masthead">
         <h1>{summary.name}</h1>
-        <Link className="back" href="/">All topics</Link>
+        <Link className="back" href="/">{t.allTopics}</Link>
       </header>
 
       {!summary.started ? (
         <section className="panel">
-          <h2>Not started</h2>
-          <p>Claude draws the mission out of you before anything else. Start it in a terminal:</p>
+          <h2>{t.notStarted}</h2>
+          <p>{t.notStartedBody}</p>
           <pre className="command">cd workspaces/{summary.name}{"\n"}claude{"\n"}/teach</pre>
         </section>
       ) : (
@@ -41,32 +43,26 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
       )}
 
       <section className="panel">
-        <h2>Review</h2>
+        <h2>{t.review}</h2>
         {summary.total === 0 ? (
-          <p className="note">
-            No probes yet. They arrive with your first lesson — Claude writes them alongside it.
-          </p>
+          <p className="note">{t.noProbesYet}</p>
         ) : summary.due === 0 ? (
-          <p className="note">
-            Nothing due. {summary.total} probes are holding
-            {summary.retention !== null && ` at ${Math.round(summary.retention * 100)}% recall`}.
-          </p>
+          <p className="note">{t.holding(summary.total, summary.retention)}</p>
         ) : (
           <div className="row">
             <Link href={`/ws/${summary.name}/review`}>
-              <button>Recall {summary.due} {summary.due === 1 ? "probe" : "probes"}</button>
+              <button>{t.recallProbes(summary.due)}</button>
             </Link>
-            <span className="note">Typed from memory, graded against the lesson.</span>
+            <span className="note">{t.typedFromMemory}</span>
           </div>
         )}
       </section>
 
       {struggles.length > 0 && (
         <section className="panel">
-          <h2>Waiting to be taught</h2>
+          <h2>{t.waitingToBeTaught}</h2>
           <p className="note" style={{ marginBottom: "0.9rem" }}>
-            Answers that showed the model was wrong, not just unretrieved. Claude reads these at
-            the start of your next session and teaches them before anything new.
+            {t.waitingToBeTaughtNote}
           </p>
           <ul className="plain">
             {struggles.map((s) => (
@@ -83,11 +79,8 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
 
       {summary.unprobed.length > 0 && (
         <section className="panel">
-          <h2>Lessons with no probes</h2>
-          <p className="warn">
-            These were taught but never turned into recall, so they are not being reviewed. Ask
-            Claude to write probes for them.
-          </p>
+          <h2>{t.unprobedLessons}</h2>
+          <p className="warn">{t.unprobedNote}</p>
           <ul className="plain">
             {summary.unprobed.map((l) => <li key={l}>{l}</li>)}
           </ul>
@@ -96,11 +89,11 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
 
       {palaces.length > 0 && (
         <section className="panel">
-          <h2>Palaces</h2>
+          <h2>{t.palaces}</h2>
           {palaces.map((p) => (
             <details key={p.id} style={{ marginBottom: "0.6rem" }}>
               <summary>
-                {p.title} <span className="note">— {p.route}, {p.loci.length} loci</span>
+                {p.title} <span className="note">{t.routeLoci(p.route, p.loci.length)}</span>
               </summary>
               <ol className="loci">
                 {p.loci.map((l, i) => (
@@ -120,7 +113,7 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
 
       {lessons.length > 0 && (
         <section className="panel">
-          <h2>Lessons</h2>
+          <h2>{t.lessons}</h2>
           <ul className="plain">
             {lessons.map((l) => (
               <li key={l}>

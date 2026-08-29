@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getLocale, getStrings } from "@/lib/i18n.server";
 import { read } from "@/lib/jsonl";
 import { reviewsLog, workspaceName } from "@/lib/paths";
 import { loadProbes } from "@/lib/probes";
@@ -13,6 +14,7 @@ const SESSION_SIZE = 10;
 
 export default async function Review({ params }: { params: Promise<{ ws: string }> }) {
   const { ws: raw } = await params;
+  const [t, locale] = await Promise.all([getStrings(), getLocale()]);
   let ws: string;
   try {
     ws = workspaceName(raw);
@@ -34,14 +36,15 @@ export default async function Review({ params }: { params: Promise<{ ws: string 
     <>
       <header className="masthead">
         <h1>{ws}</h1>
-        <Link className="back" href={`/ws/${ws}`}>Leave</Link>
+        <Link className="back" href={`/ws/${ws}`}>{t.leave}</Link>
       </header>
 
       {session.length === 0 ? (
-        <p className="empty">Nothing due. Come back when something has had time to fade.</p>
+        <p className="empty">{t.nothingDueFaded}</p>
       ) : (
         <ReviewSession
           ws={ws}
+          locale={locale}
           remaining={due.length}
           probes={session.map((p) => ({ id: p.id, kind: p.kind, prompt: p.prompt }))}
         />

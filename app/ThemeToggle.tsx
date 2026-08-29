@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { dict, type Locale } from "@/lib/i18n";
 
 type Theme = "system" | "light" | "dark";
 
@@ -8,8 +9,9 @@ const NEXT: Record<Theme, Theme> = { system: "light", light: "dark", dark: "syst
 
 // The current theme lives in the data-theme the pre-paint script wrote, so the
 // server has nothing to render here until mount.
-export default function ThemeToggle() {
+export default function ThemeToggle({ locale }: { locale: Locale }) {
   const [theme, setTheme] = useState<Theme | null>(null);
+  const t = dict[locale];
 
   useEffect(() => {
     const stored = document.documentElement.dataset.theme;
@@ -20,8 +22,8 @@ export default function ThemeToggle() {
 
   return (
     <button
-      className="theme-toggle"
-      aria-label={`Theme: ${theme}. Switch to ${NEXT[theme]}.`}
+      className="toggle"
+      aria-label={t.themeSwitch(t.themeName[theme], t.themeName[NEXT[theme]])}
       onClick={() => {
         const next = NEXT[theme];
         // No data-theme at all is what "system" means — the CSS falls back to
@@ -36,7 +38,7 @@ export default function ThemeToggle() {
         setTheme(next);
       }}
     >
-      {theme}
+      {t.themeName[theme]}
     </button>
   );
 }

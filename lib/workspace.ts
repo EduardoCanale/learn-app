@@ -120,7 +120,9 @@ export async function summarise(name: string): Promise<WorkspaceSummary> {
 export async function create(name: string): Promise<void> {
   const ws = workspaceName(name);
   const dir = wsDir(ws);
-  if (await exists(dir)) throw new Error(`Workspace "${ws}" already exists`);
+  // A sentinel, not a message: the wording belongs to the route, which knows
+  // the caller's language.
+  if (await exists(dir)) throw new Error("exists");
 
   for (const sub of ["lessons", "reference", "learning-records", "assets", "probes", "palaces", ".learn"]) {
     await mkdir(path.join(dir, sub), { recursive: true });

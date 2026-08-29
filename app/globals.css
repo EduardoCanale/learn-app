@@ -324,10 +324,15 @@ details summary { cursor: pointer; }
 .loci .image { color: var(--ink-soft); font-size: 0.9rem; }
 .loci .encodes { font-size: 0.85rem; color: var(--held); }
 
-.theme-toggle {
+.toggles {
   position: fixed;
   bottom: 1rem;
   right: 1rem;
+  display: flex;
+  gap: 0.4rem;
+}
+
+.toggle {
   font: 400 0.66rem/1 var(--mono);
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -336,4 +341,4 @@ details summary { cursor: pointer; }
   color: var(--ink-faint);
   border-color: var(--rule);
 }
-.theme-toggle:hover { color: var(--ink); }
+.toggle:hover { color: var(--ink); }
