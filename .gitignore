@@ -1,0 +1,7 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+
+# Learning data is yours, not the app's source.
+workspaces/
