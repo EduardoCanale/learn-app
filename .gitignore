@@ -2,6 +2,10 @@ node_modules/
 .next/
 next-env.d.ts
 *.tsbuildinfo
+.DS_Store
 
-# Learning data is yours, not the app's source.
-workspaces/
+# Your learning data, and your real places, are yours — not the app's source.
+# Both anchored to the repo root: an unanchored `workspaces/` also matches
+# `app/api/workspaces/`, which is source.
+/workspaces/
+/PLACES.md
