@@ -42,6 +42,13 @@ notifies you.
 
 **2. Write your places** in `PLACES.md`, at the repo root.
 
+```bash
+cp PLACES.example.md PLACES.md
+```
+
+`PLACES.md` is gitignored — it describes your home and your commute, so it stays out of the
+repo and can never turn up in a pull request. The example is what's tracked.
+
 Real places you know cold, each as an ordered walk of fixed positions. Memory palaces are
 built on these and Claude cannot invent one for you. Twenty minutes, once — the file
 explains the rules. Skip it and you lose palaces, not the rest of the app.
@@ -133,7 +140,8 @@ learn-app/
   app/                Next.js pages and the two API routes
   lib/                scheduling, probe loading, the Claude call, log folding, i18n
   templates/CLAUDE.md the contract scaffolded into every workspace
-  PLACES.md           your real routes, the source for every palace
+  PLACES.example.md   the starting point for your routes
+  PLACES.md           your real routes (gitignored — this is your data)
   workspaces/         your topics (gitignored — this is your data)
     rust/
       MISSION.md RESOURCES.md NOTES.md lessons/ reference/       <- /teach
@@ -177,3 +185,7 @@ npm test
 Covers the parts that would break silently: the verdict-to-FSRS mapping, replaying
 the review log into card state, session interleaving, anchored section extraction, and the
 locale fallback and plural agreement behind the language toggle.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
