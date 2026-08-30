@@ -3,5 +3,6 @@ node_modules/
 next-env.d.ts
 *.tsbuildinfo
 
-# Learning data is yours, not the app's source.
-workspaces/
+# Learning data is yours, not the app's source. Anchored to the repo root: an
+# unanchored `workspaces/` also matches `app/api/workspaces/`, which is source.
+/workspaces/
