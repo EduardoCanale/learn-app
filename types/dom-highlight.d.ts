@@ -8,8 +8,6 @@
 
 interface HighlightRegistry {
   set(name: string, highlight: Highlight): this;
-  delete(name: string): boolean;
-  clear(): void;
 }
 
 interface Window {

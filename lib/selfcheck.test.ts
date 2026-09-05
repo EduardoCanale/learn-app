@@ -2,7 +2,7 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import { Rating, State } from "ts-fsrs";
 
-import { resolve } from "./anchor.ts";
+import { flatten, resolve } from "./anchor.ts";
 import { dict, toLocale } from "./i18n.ts";
 import { parseNote, serialiseNote } from "./notes.ts";
 import { interleave, isDue, ratingFor, replay, type ReviewEvent } from "./scheduler.ts";
@@ -122,10 +122,12 @@ test("a Note round-trips, keeping free prose and a marker it cannot read", () =>
 });
 
 test("an Anchor finds the copy its context matches, and null once the quote is gone", () => {
-  const flat = toText(
-    "<p>The interval is three semitones and that is that.</p>" +
-      "<p>Later the interval is three semitones on the sixth string.</p>",
-  );
+  // Through `flatten`, which is the normaliser both capture and resolution use.
+  const flat = flatten(
+    "The interval is three semitones and that is that.\n" +
+      "  Later the interval is  three semitones on the sixth string.",
+  ).text;
+  assert.equal(flat.includes("  "), false, "one whitespace rule, applied");
   const at = flat.lastIndexOf("three semitones");
   const anchor = {
     quote: "three semitones",

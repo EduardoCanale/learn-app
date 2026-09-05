@@ -1,4 +1,5 @@
 import { mkdir, readFile, readdir, rename, writeFile, access } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { PLACES_FILE, ROOT, WORKSPACES, inWorkspace, lessonName, reviewsLog, strugglesLog, workspaceName, wsDir } from "./paths";
 import { read } from "./jsonl";
@@ -184,14 +185,16 @@ export async function loadNote(ws: string, lesson: string): Promise<Note> {
 }
 
 /**
- * Written beside the target and renamed over it, so a crash mid-write cannot
- * leave someone with half a Note. `notes/` is created on the first write —
- * Workspaces made before this feature existed never had one.
+ * Written beside the target and renamed over it, so a failed or interrupted
+ * write cannot leave someone holding half a Note. The name is unique per write:
+ * the dev server is one process, so a shared temp path would let two concurrent
+ * saves of the same Note interleave into one torn file. `notes/` is created on
+ * the first write — Workspaces made before this feature existed never had one.
  */
 export async function saveNote(ws: string, lesson: string, note: Note): Promise<void> {
   const file = notePath(ws, lesson);
   await mkdir(path.dirname(file), { recursive: true });
-  const temp = `${file}.${process.pid}.tmp`;
+  const temp = `${file}.${randomUUID()}.tmp`;
   await writeFile(temp, serialiseNote(note), "utf8");
   await rename(temp, file);
 }

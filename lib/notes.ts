@@ -6,7 +6,7 @@
  * the same split `lib/i18n.ts` and `lib/i18n.server.ts` already use.
  */
 
-import type { Anchor } from "./anchor";
+import type { Anchor } from "./anchor.ts";
 
 export type Annotation = {
   id: string;
@@ -74,7 +74,7 @@ export function serialiseNote(note: Note): string {
         // A body that does not end on a newline would push the next marker off
         // the start of its line, and the marker would parse as prose.
         const body = a.body && !a.body.endsWith("\n") ? a.body + "\n" : a.body;
-        return `<!-- a ${JSON.stringify(flat(a))} -->\n${body}`;
+        return `<!-- a ${JSON.stringify(markerFields(a))} -->\n${body}`;
       })
       .join("")
   );
@@ -94,6 +94,31 @@ export function toBody(quote: string, prose: string): string {
 
 export function toProse(body: string): string {
   return body.replace(/^(?:>[^\n]*\n)+/, "").trim();
+}
+
+/**
+ * The Note with one more Annotation on the end. Both ways of making one — your
+ * own words, and an Ask answer you kept — land here, so an entry is assembled
+ * in exactly one place.
+ */
+export function withAnnotation(
+  note: Note,
+  lesson: string,
+  entry: { kind: Annotation["kind"]; anchor: Anchor; prose: string },
+): Note {
+  return {
+    preamble: note.preamble || newPreamble(lesson),
+    annotations: [
+      ...note.annotations,
+      {
+        id: Math.random().toString(36).slice(2, 8),
+        at: new Date().toISOString(),
+        kind: entry.kind,
+        anchor: entry.anchor,
+        body: toBody(entry.anchor.quote, entry.prose),
+      },
+    ],
+  };
 }
 
 /** The wire shape, validated before anything is written (PUT is a trust boundary). */
@@ -124,7 +149,8 @@ function toAnchor(value: unknown): Anchor | null {
   return { quote: a.quote, prefix: a.prefix, suffix: a.suffix, start: a.start, end: a.end };
 }
 
-function flat(a: Annotation) {
+/** The marker's flat JSON: the Anchor is inlined there, not nested. */
+function markerFields(a: Annotation) {
   return {
     id: a.id,
     at: a.at,

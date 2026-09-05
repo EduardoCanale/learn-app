@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { flatten } from "./anchor.ts";
 
 export type Source = { html: string; text: string; file: string; anchor: string | null };
 
@@ -38,8 +39,9 @@ function bodyOf(html: string): string {
   return (body ? body[1] : html).slice(0, MAX);
 }
 
+/** Whitespace is collapsed by `flatten`, so that rule has exactly one copy. */
 export function toText(html: string): string {
-  return html
+  const stripped = html
     .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/g, " ")
@@ -47,9 +49,8 @@ export function toText(html: string): string {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/\s+/g, " ")
-    .trim();
+    .replace(/&#39;/g, "'");
+  return flatten(stripped).text;
 }
 
 function escapeRe(s: string) {

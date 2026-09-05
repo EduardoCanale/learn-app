@@ -70,6 +70,8 @@ const en = {
   deleteNoteConfirm: "Delete this note? It cannot be undone.",
   passageMoved: "The lesson no longer contains this passage.",
   noteSaveFailed: "That did not save. Your writing is still here — try again.",
+  noteLoadFailed:
+    "Couldn't read this lesson's notes, so nothing will be saved over them. Reload the page.",
 
   // review
   leave: "Leave",
@@ -189,6 +191,8 @@ const es: typeof en = {
   deleteNoteConfirm: "¿Borrar este apunte? No se puede deshacer.",
   passageMoved: "La lección ya no contiene este fragmento.",
   noteSaveFailed: "No se guardó. Lo que escribiste sigue aquí — inténtalo otra vez.",
+  noteLoadFailed:
+    "No se pudieron leer los apuntes de esta lección, así que no se escribirá nada encima. Recarga la página.",
 
   leave: "Salir",
   nothingDueFaded: "Nada pendiente. Vuelve cuando algo haya tenido tiempo de desvanecerse.",

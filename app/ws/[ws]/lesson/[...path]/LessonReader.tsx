@@ -1,14 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { CONTEXT, flatten, resolve, type Anchor } from "@/lib/anchor";
+import { anchorAt, flatten, resolve, type Anchor } from "@/lib/anchor";
 import { dict, type Locale } from "@/lib/i18n";
 import {
   emptyNote,
-  newPreamble,
   noteKeyFor,
   toBody,
   toProse,
+  withAnnotation,
   type Annotation,
   type Note,
 } from "@/lib/notes";
@@ -48,9 +48,14 @@ export default function LessonReader({
 
   // The Lesson the iframe is actually showing, which changes under us when a
   // sibling link inside the document is followed.
-  const [key, setKey] = useState(lesson);
-  const lessonNow = useRef(lesson);
+  const [showing, setShowing] = useState(lesson);
+  // Read by the load handler, which must stay referentially stable: it is the
+  // effect's only dependency, and re-subscribing re-fires the catch-up branch.
+  const showingRef = useRef(lesson);
   const [current, setCurrent] = useState(note);
+  // A Note we could not load is not an empty Note. Saving over it would erase
+  // whatever is actually on disk, so a failed load blocks writing instead.
+  const [stale, setStale] = useState(false);
   const [placed, setPlaced] = useState<Placed[]>([]);
   const [loads, setLoads] = useState(0);
 
@@ -100,15 +105,25 @@ export default function LessonReader({
 
   const reload = useCallback(
     async (next: string | null) => {
-      if (!next) return setCurrent(emptyNote());
+      setStale(false);
+      setCurrent(emptyNote());
+      if (!next) return;
+
       const res = await fetch(`/api/ws/${ws}/notes/${next}`).catch(() => null);
       const body = res?.ok ? ((await res.json().catch(() => null)) as Note | null) : null;
-      setCurrent(body ?? emptyNote());
+      if (!body) {
+        // Whatever is on disk is still there. Show nothing rather than an empty
+        // Note, and refuse to write until a load succeeds.
+        setStale(true);
+        setError(t.noteLoadFailed);
+        return;
+      }
+      setCurrent(body);
     },
-    [ws],
+    [ws, t],
   );
 
-  const settle = useCallback(() => {
+  const onLessonReady = useCallback(() => {
     const doc = frame.current?.contentDocument;
     if (!doc || doc.location.href === "about:blank") return;
 
@@ -125,13 +140,14 @@ export default function LessonReader({
     setDraft(null);
     setEditing(null);
     setFocus(null);
+    setError(null);
 
     // A sibling link inside the Lesson navigates the iframe, so which Lesson we
     // are looking at is whatever the frame says it is.
     const next = noteKeyFor(relOf(doc.location.pathname, ws) ?? "");
-    if (next !== lessonNow.current) {
-      lessonNow.current = next;
-      setKey(next);
+    if (next !== showingRef.current) {
+      showingRef.current = next;
+      setShowing(next);
       void reload(next);
     }
     setLoads((n) => n + 1);
@@ -140,19 +156,19 @@ export default function LessonReader({
   useEffect(() => {
     const iframe = frame.current;
     if (!iframe) return;
-    iframe.addEventListener("load", settle);
+    iframe.addEventListener("load", onLessonReady);
     // The Lesson can finish loading before React hydrates and attaches that,
     // in which case its load event is already gone.
-    if (iframe.contentDocument?.readyState === "complete") settle();
-    return () => iframe.removeEventListener("load", settle);
-  }, [settle]);
+    if (iframe.contentDocument?.readyState === "complete") onLessonReady();
+    return () => iframe.removeEventListener("load", onLessonReady);
+  }, [onLessonReady]);
 
   /** Whole-file write: the Note is small and there is one writer. */
   async function save(next: Note): Promise<boolean> {
-    if (!key) return false;
+    if (!showing || stale) return false;
     setBusy(true);
     setError(null);
-    const res = await fetch(`/api/ws/${ws}/notes/${key}`, {
+    const res = await fetch(`/api/ws/${ws}/notes/${showing}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(next),
@@ -168,18 +184,8 @@ export default function LessonReader({
   }
 
   async function add() {
-    if (!draft || !key || !prose.trim()) return;
-    const written: Annotation = {
-      id: Math.random().toString(36).slice(2, 8),
-      at: new Date().toISOString(),
-      kind: "note",
-      anchor: draft,
-      body: toBody(draft.quote, prose),
-    };
-    const ok = await save({
-      preamble: current.preamble || newPreamble(key),
-      annotations: [...current.annotations, written],
-    });
+    if (!draft || !showing || !prose.trim()) return;
+    const ok = await save(withAnnotation(current, showing, { kind: "note", anchor: draft, prose }));
     if (ok) {
       setDraft(null);
       setProse("");
@@ -228,7 +234,7 @@ export default function LessonReader({
           src={`/api/ws/${ws}/raw/${rel.split("/").map(encodeURIComponent).join("/")}`}
           title={rel}
         />
-        {passage && !draft && key && (
+        {passage && !draft && showing && (
           <div className="reader-tools" style={{ left: passage.x, top: passage.y }}>
             <button
               onClick={() => {
@@ -246,10 +252,10 @@ export default function LessonReader({
       <aside className="panel reader-panel">
         <h2>
           {t.notes}
-          {key && placed.length > 0 && <span className="note"> {t.noteCount(placed.length)}</span>}
+          {showing && placed.length > 0 && <span className="note"> {t.noteCount(placed.length)}</span>}
         </h2>
 
-        {!key && <p className="note">{t.noNotesHere}</p>}
+        {!showing && <p className="note">{t.noNotesHere}</p>}
 
         {draft && (
           <div className="entry-note">
@@ -271,13 +277,15 @@ export default function LessonReader({
           </div>
         )}
 
-        {key && ordered.length === 0 && !draft && <p className="note">{t.noNotesYet}</p>}
+        {showing && ordered.length === 0 && !draft && !stale && <p className="note">{t.noNotesYet}</p>}
 
         <ul className="plain">
           {ordered.map((a) => (
             <li key={a.id} className={a.id === focus ? "entry-note lit" : "entry-note"}>
               {a.offset === null && loads > 0 && <p className="warn">{t.passageMoved}</p>}
-              <blockquote onClick={() => reveal(a)}>{a.anchor.quote}</blockquote>
+              <button className="entry-quote" onClick={() => reveal(a)}>
+                <blockquote>{a.anchor.quote}</blockquote>
+              </button>
 
               {editing === a.id ? (
                 <>
@@ -359,19 +367,9 @@ function capture(
   if (start === null || end === null || end <= start) return null;
 
   const box = range.getBoundingClientRect();
-  return {
-    anchor: {
-      // Sliced out of the flat text rather than taken from the Range, because
-      // flat text is the only thing the quote is ever searched for in.
-      quote: ix.text.slice(start, end),
-      prefix: ix.text.slice(Math.max(0, start - CONTEXT), start),
-      suffix: ix.text.slice(end, end + CONTEXT),
-      start,
-      end,
-    },
-    x: box.left + box.width / 2,
-    y: box.top,
-  };
+  // Built off the flat text rather than the Range, because flat text is the
+  // only thing a quote is ever searched for in.
+  return { anchor: anchorAt(ix.text, start, end), x: box.left + box.width / 2, y: box.top };
 }
 
 function flatAt(ix: Index, node: Node, offset: number, side: "start" | "end"): number | null {

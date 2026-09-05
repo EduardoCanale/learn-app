@@ -19,12 +19,32 @@ export type Anchor = {
 };
 
 /** How much text either side of a Passage is kept to tell two copies apart. */
-export const CONTEXT = 32;
+const CONTEXT = 32;
+
+/**
+ * The Anchor for a span of flat text: the words, the words either side of them,
+ * and the position — which is only ever a hint. The counterpart of `resolve`,
+ * and the only place an Anchor is built.
+ */
+export function anchorAt(flatText: string, start: number, end: number): Anchor {
+  return {
+    quote: flatText.slice(start, end),
+    prefix: flatText.slice(Math.max(0, start - CONTEXT), start),
+    suffix: flatText.slice(end, end + CONTEXT),
+    start,
+    end,
+  };
+}
 
 /**
  * Collapse whitespace, reporting where in `raw` each surviving character came
  * from. The browser needs that map to turn an offset back into a Range; the
- * server only ever wants `.text`.
+ * server only ever wants `.text`, which is what `toText` returns.
+ *
+ * `toText` feeds this the whole document with every tag replaced by a space;
+ * the browser feeds it text nodes joined end to end, because `word<em>s</em>`
+ * is one word to whoever is selecting it. That difference is in the input, on
+ * purpose. The whitespace rule itself lives here and nowhere else.
  */
 export function flatten(raw: string): { text: string; from: number[] } {
   let text = "";
@@ -57,7 +77,6 @@ export function resolve(flatText: string, anchor: Anchor): number | null {
     hits.push(at);
   }
   if (hits.length === 0) return null;
-  if (hits.length === 1) return hits[0];
 
   // The same words twice over. Whichever copy still has the recorded words
   // around it is the one the Passage was taken from; a tie falls back to the

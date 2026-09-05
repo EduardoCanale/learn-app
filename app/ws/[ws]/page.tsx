@@ -118,9 +118,13 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
           <ul className="plain">
             {notes.map((n) => (
               <li key={n.lesson}>
-                <Link href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(n.lesson)}.html`}>
+                <a
+                  href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(n.lesson)}.html`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   {n.lesson}
-                </Link>{" "}
+                </a>{" "}
                 <span className="note">{t.noteCount(n.count)}</span>
               </li>
             ))}
@@ -134,7 +138,13 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
           <ul className="plain">
             {lessons.map((l) => (
               <li key={l}>
-                <Link href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(l)}`}>{l}</Link>
+                <a
+                  href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(l)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {l}
+                </a>
               </li>
             ))}
           </ul>

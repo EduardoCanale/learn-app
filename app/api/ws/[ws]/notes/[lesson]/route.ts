@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getStrings } from "@/lib/i18n.server";
 import { toNote } from "@/lib/notes";
-import { lessonName, workspaceName } from "@/lib/paths";
+import { names, sameOrigin } from "@/lib/route";
 import { loadNote, saveNote } from "@/lib/workspace";
 
 /** A Note is prose about one Lesson. Anything approaching this is not that. */
@@ -11,17 +11,12 @@ type Params = { params: Promise<{ ws: string; lesson: string }> };
 
 export async function GET(_request: Request, { params }: Params) {
   const t = await getStrings();
-  const raw = await params;
+  const { ws, lesson } = await params;
 
-  let ws: string, lesson: string;
-  try {
-    ws = workspaceName(raw.ws);
-    lesson = lessonName(raw.lesson);
-  } catch {
-    return NextResponse.json({ error: t.unknownTopic }, { status: 404 });
-  }
+  const named = names(ws, lesson);
+  if (!named) return NextResponse.json({ error: t.unknownTopic }, { status: 404 });
 
-  return NextResponse.json(await loadNote(ws, lesson));
+  return NextResponse.json(await loadNote(named.ws, named.lesson));
 }
 
 /**
@@ -30,15 +25,15 @@ export async function GET(_request: Request, { params }: Params) {
  */
 export async function PUT(request: Request, { params }: Params) {
   const t = await getStrings();
-  const raw = await params;
+  const { ws, lesson } = await params;
 
-  let ws: string, lesson: string;
-  try {
-    ws = workspaceName(raw.ws);
-    lesson = lessonName(raw.lesson);
-  } catch {
-    return NextResponse.json({ error: t.unknownTopic }, { status: 404 });
-  }
+  const named = names(ws, lesson);
+  if (!named) return NextResponse.json({ error: t.unknownTopic }, { status: 404 });
+  if (!sameOrigin(request)) return NextResponse.json({ error: t.badRequest }, { status: 403 });
+
+  // Checked before reading, so an oversized body is refused rather than buffered.
+  const declared = Number(request.headers.get("content-length"));
+  if (declared > MAX) return NextResponse.json({ error: t.badRequest }, { status: 413 });
 
   const text = await request.text();
   if (text.length > MAX) return NextResponse.json({ error: t.badRequest }, { status: 413 });
@@ -53,6 +48,6 @@ export async function PUT(request: Request, { params }: Params) {
   const note = toNote(body);
   if (!note) return NextResponse.json({ error: t.badRequest }, { status: 400 });
 
-  await saveNote(ws, lesson, note);
+  await saveNote(named.ws, named.lesson, note);
   return NextResponse.json(note);
 }

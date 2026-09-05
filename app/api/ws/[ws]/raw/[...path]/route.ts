@@ -18,6 +18,25 @@ const TYPES: Record<string, string> = {
   ".json": "application/json",
 };
 
+/**
+ * A Lesson runs its own scripts (ADR 0014) and the reader frames it same-origin
+ * so it can reach the selection, which together mean lesson HTML can drive the
+ * app's own routes. It cannot send anything anywhere: no lesson does network IO
+ * — they are documents — so connections and form posts are refused outright,
+ * while the scripts, styles and web fonts they do use keep working.
+ */
+const POLICY = [
+  "default-src 'none'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src https://fonts.gstatic.com",
+  "img-src 'self' data:",
+  "media-src 'self'",
+  "connect-src 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'self'",
+].join("; ");
+
 export async function GET(_request: Request, { params }: { params: Promise<{ ws: string; path: string[] }> }) {
   const { ws, path: parts } = await params;
   const rel = parts.map(decodeURIComponent).join("/");
@@ -26,7 +45,9 @@ export async function GET(_request: Request, { params }: { params: Promise<{ ws:
 
   try {
     const file = await readFile(inWorkspace(ws, rel));
-    return new Response(new Uint8Array(file), { headers: { "content-type": type } });
+    return new Response(new Uint8Array(file), {
+      headers: { "content-type": type, "content-security-policy": POLICY },
+    });
   } catch {
     return new Response("Not found", { status: 404 });
   }
