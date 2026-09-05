@@ -129,9 +129,28 @@ export async function create(name: string): Promise<void> {
   for (const sub of ["lessons", "reference", "learning-records", "assets", "probes", "palaces", "notes", ".learn"]) {
     await mkdir(path.join(dir, sub), { recursive: true });
   }
-  const template = await readFile(path.join(ROOT, "templates", "CLAUDE.md"), "utf8");
-  await writeFile(path.join(dir, "CLAUDE.md"), template, "utf8");
+  await syncContract(ws);
   await syncPlaces(ws);
+}
+
+/**
+ * The contract is app-owned, so it is rewritten from the template whenever the
+ * Workspace page is looked at (ADR 0016). Scaffolding it once froze it at
+ * whatever the template said the day the Workspace was made, which would have
+ * left every change — Notes first among them — reaching new Workspaces only.
+ * Unchanged content is not written, so a page view does not churn mtimes.
+ */
+export async function syncContract(ws: string): Promise<void> {
+  const template = await readFile(path.join(ROOT, "templates", "CLAUDE.md"), "utf8");
+  const file = inWorkspace(ws, "CLAUDE.md");
+  try {
+    if ((await readFile(file, "utf8")) === template) return;
+  } catch (err) {
+    // No contract yet is ordinary — a Workspace being created, or one made by
+    // hand. Anything else means we cannot see the file we are about to replace.
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+  await writeFile(file, template, "utf8");
 }
 
 /**

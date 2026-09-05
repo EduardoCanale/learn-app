@@ -100,13 +100,32 @@ When one is warranted:
 The app turns each Palace into one Walk on the same review queue as Probes.
 There is no separate palace schedule.
 
+## Read their Notes before you teach
+
+`notes/<lesson>.md` is the learner's own writing about that lesson: the passages
+they highlighted, what they made of them, and the answers they kept from asking
+about them while reading. One file per lesson, mirroring its name.
+
+Read them at the start of a session, next to the Struggles, and read the one for
+a lesson before you revise it. A Struggle tells you they got something wrong. A
+Note tells you what they thought was going on, which is usually the more useful
+half.
+
+They are theirs. Never rewrite one, never append to one, never tidy one up. If a
+Note has something wrong in it, correct it by teaching, not by editing the file.
+
+Notes are context, not a queue. There is nothing to drain and no event to append
+— unlike `.learn/struggles.jsonl`, reading a Note leaves nothing behind.
+
 ## Files
 
 | Path | Owner | Notes |
 | --- | --- | --- |
 | `MISSION.md`, `lessons/`, `reference/`, `learning-records/`, `assets/` | you | Standard `/teach` |
+| `CLAUDE.md` | the app | This file, rewritten from the template on every workspace-page view |
 | `probes/*.json` | you | One file per lesson, named by its number |
 | `palaces/*.json` | you | Enumerable material only |
+| `notes/*.md` | the learner | Read before teaching. Never write |
 | `PLACES.md` | the app | Read it, never edit it |
 | `.learn/struggles.jsonl` | shared | You append `taught` only |
 | `.learn/reviews.jsonl` | the app | Never write |

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStrings } from "@/lib/i18n.server";
 import { loadPalaces } from "@/lib/probes";
-import { listLessons, listNotes, openStruggles, summarise, syncPlaces } from "@/lib/workspace";
+import { listLessons, listNotes, openStruggles, summarise, syncContract, syncPlaces } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -12,9 +12,10 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
 
   let summary, palaces, lessons, struggles, notes;
   try {
-    // Route claims are global, so they are recomputed and written into this
-    // workspace's PLACES.md whenever you look at it.
-    await syncPlaces(ws);
+    // Both files are the app's, and both are rewritten here so that a change
+    // at the root reaches the workspaces that already exist: route claims are
+    // global (ADR 0008), and the teaching contract is a template (ADR 0016).
+    await Promise.all([syncContract(ws), syncPlaces(ws)]);
     [summary, palaces, lessons, struggles, notes] = await Promise.all([
       summarise(ws),
       loadPalaces(ws),
