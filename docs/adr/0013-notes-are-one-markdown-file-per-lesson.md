@@ -1,0 +1,7 @@
+# A Note is one Markdown file per Lesson, with its Anchors in HTML comments
+
+`NOTES.md` already exists in every Workspace, but it belongs to `/teach` — it holds what Claude decided about how to teach this learner. What the learner themselves understood is a different thing with a different owner, and collapsing the two puts teaching decisions and half-formed questions in one file that both parties rewrite. So a Note is new and separate: `notes/0001-int-is-not-number.md`, mirroring the Lesson it belongs to, one per Lesson. Working notes keep their `/teach` meaning untouched.
+
+The app writes it, the UI edits it, and Claude reads it. The learner is not expected to open it by hand — the Lesson is where they work — but it stays plain Markdown so they can, and so ADR 0006's actual reason holds: when Claude plans the next lesson it opens a student's notebook, not a log it has to fold.
+
+Each Annotation's Anchor rides above its entry as an HTML comment. Rejected `notes/*.jsonl` alongside the `.learn/` logs: those are app state and this is prose, and a log turns editing a sentence into appending a correction. Rejected a sidecar `.json`: joining it back to the Markdown needs ids written into the prose anyway, so you get the marker *and* a second file that silently desyncs. The comments are invisible in every Markdown renderer and double as the entry delimiters, so parsing back is a split rather than a Markdown round-trip. Deleting one by accident costs that entry its highlight and nothing else — the prose is never at risk.

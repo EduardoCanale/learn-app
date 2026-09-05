@@ -55,6 +55,34 @@ const en = {
   palaces: "Palaces",
   routeLoci: (route: string, loci: number) => `— ${route}, ${loci} loci`,
   lessons: "Lessons",
+  noteCount: (n: number) => `${n} ${n === 1 ? "note" : "notes"}`,
+
+  // the lesson reader
+  notes: "Notes",
+  noNotesYet: "Nothing yet. Select a passage in the lesson to write about it.",
+  noNotesHere: "This isn't a lesson, so it has no notes.",
+  addNote: "Note",
+  notePlaceholder: "What you made of it. Yours — Claude reads these before teaching you next.",
+  saveNote: "Save",
+  cancel: "Cancel",
+  editNote: "Edit",
+  deleteNote: "Delete",
+  deleteNoteConfirm: "Delete this note? It cannot be undone.",
+  passageMoved: "The lesson no longer contains this passage.",
+  noteSaveFailed: "That did not save. Your writing is still here — try again.",
+  noteLoadFailed:
+    "Couldn't read this lesson's notes, so nothing will be saved over them. Reload the page.",
+
+  // ask
+  askClaude: "Ask",
+  askPlaceholder: "What don't you follow about this passage?",
+  askSend: "Send",
+  asking: "Asking…",
+  askEmpty: "Select a passage and ask about it. The thread lasts as long as the lesson.",
+  askNotHere: "Ask works on lessons, not on reference pages.",
+  keepAnswer: "Keep in notes",
+  keptAnswer: "Kept",
+  askFailed: "Can't reach Claude, so this can't be answered. Try again.",
 
   // review
   leave: "Leave",
@@ -160,6 +188,32 @@ const es: typeof en = {
   palaces: "Palacios",
   routeLoci: (route, loci) => `— ${route}, ${loci} loci`,
   lessons: "Lecciones",
+  noteCount: (n) => `${n} ${n === 1 ? "apunte" : "apuntes"}`,
+
+  notes: "Apuntes",
+  noNotesYet: "Todavía nada. Selecciona un fragmento de la lección para escribir sobre él.",
+  noNotesHere: "Esto no es una lección, así que no tiene apuntes.",
+  addNote: "Apunte",
+  notePlaceholder: "Lo que sacaste en claro. Es tuyo — Claude lo lee antes de enseñarte lo siguiente.",
+  saveNote: "Guardar",
+  cancel: "Cancelar",
+  editNote: "Editar",
+  deleteNote: "Borrar",
+  deleteNoteConfirm: "¿Borrar este apunte? No se puede deshacer.",
+  passageMoved: "La lección ya no contiene este fragmento.",
+  noteSaveFailed: "No se guardó. Lo que escribiste sigue aquí — inténtalo otra vez.",
+  noteLoadFailed:
+    "No se pudieron leer los apuntes de esta lección, así que no se escribirá nada encima. Recarga la página.",
+
+  askClaude: "Preguntar",
+  askPlaceholder: "¿Qué no te encaja de este fragmento?",
+  askSend: "Enviar",
+  asking: "Preguntando…",
+  askEmpty: "Selecciona un fragmento y pregunta sobre él. El hilo dura lo que dure la lección.",
+  askNotHere: "Preguntar funciona en las lecciones, no en las páginas de referencia.",
+  keepAnswer: "Guardar en apuntes",
+  keptAnswer: "Guardado",
+  askFailed: "No se puede contactar con Claude, así que esto no se puede responder. Inténtalo otra vez.",
 
   leave: "Salir",
   nothingDueFaded: "Nada pendiente. Vuelve cuando algo haya tenido tiempo de desvanecerse.",

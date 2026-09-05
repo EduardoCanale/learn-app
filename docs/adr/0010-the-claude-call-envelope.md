@@ -1,3 +1,7 @@
+---
+status: accepted — amended by ADR 0015 (the envelope is grading's; Ask streams and reads files)
+---
+
 # How the app calls Claude: Sonnet, zero tools, stateless, and it blocks when unreachable
 
 Three choices that together define the app's only outward-facing surface.

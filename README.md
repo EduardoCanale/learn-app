@@ -87,9 +87,18 @@ Both, but not for the same thing:
 | New material, or a gap taught properly | terminal, inside `workspaces/<topic>` | `claude` then `/teach` |
 | To keep what you already learned | browser | `npm run dev`, hit Recall |
 | To know which you need | browser | the home page says what's due |
+| To read a lesson and write on it | browser | open the lesson, select a passage, **Note** |
+| To ask what a passage means | browser | select it, **Ask** — a thread that lasts the lesson |
 
 Run `/teach` when you want to move forward. Review in the browser whenever something is due
 — that is most days, and it is the half `/teach` alone cannot do.
+
+Notes are yours. They live in `workspaces/<topic>/notes/<lesson>.md`, one file per lesson,
+and the contract tells Claude to read them before teaching you anything else — so what
+confused you on Tuesday is in front of it on Thursday. Ask is a real Claude session with
+read-only run of the workspace, so it answers about the passage in front of you knowing
+your mission and what you have already got wrong. It cannot write a lesson, a probe or a
+note; keeping an answer is a button you press.
 
 The two halves talk through files in the workspace, so **restart nothing**: a `/teach`
 session writing lessons shows up on a browser refresh, and failures you hit in review are
@@ -107,10 +116,11 @@ alias learn='cd /path/to/learn-app && npm run dev'
 terminal                          browser
 --------                          -------
 cd workspaces/rust && claude      npm run dev
-  /teach                            recall session
+  /teach                            recall session, and the lesson reader
   reads .learn/struggles.jsonl      free-recall probe, typed from memory
   teaches the gaps first              |
   writes lessons + probes/          claude -p (sonnet, no tools)
+  reads notes/ before teaching        |
         |                             |
         +------ shared files ------ verdict: complete? retrieval or comprehension?
                                       |
@@ -123,6 +133,15 @@ cd workspaces/rust && claude      npm run dev
                                       |
                               FSRS reschedules
                               comprehension -> struggle queued for next session
+
+                                  reading a lesson
+                                    select a passage
+                                      |
+                              +-------+-------+
+                            Note              Ask
+                            your words        a streaming Claude session,
+                            straight to       read-only in the workspace
+                            notes/            -> Keep writes it to notes/
 ```
 
 Two rules keep it coherent:
@@ -130,16 +149,17 @@ Two rules keep it coherent:
 - **Claude teaches, the app remembers.** Lessons, probes, palaces and clustering are Claude's.
   Scheduling, the review loop and the palace bookkeeping are the app's. The app never writes
   pedagogy.
-- **Claude is only ever called one-shot.** `claude -p` with zero tools, structured JSON out,
-  seconds not minutes. Anything needing a conversation queues to your terminal instead.
+- **Grading is only ever one-shot.** `claude -p` with zero tools, structured JSON out, seconds
+  not minutes, and blind to your notes. Ask is the one deliberate exception, and it is scoped
+  to the passage you selected: it explains, and it authors nothing.
 
 ## Layout
 
 ```
 learn-app/
-  app/                Next.js pages and the two API routes
-  lib/                scheduling, probe loading, the Claude call, log folding, i18n
-  templates/CLAUDE.md the contract scaffolded into every workspace
+  app/                Next.js pages, the lesson reader, and the API routes
+  lib/                scheduling, probes, the Claude calls, anchoring, notes, log folding, i18n
+  templates/CLAUDE.md the contract, rewritten into every workspace on every page view
   PLACES.example.md   the starting point for your routes
   PLACES.md           your real routes (gitignored — this is your data)
   workspaces/         your topics (gitignored — this is your data)
@@ -147,15 +167,17 @@ learn-app/
       MISSION.md RESOURCES.md NOTES.md lessons/ reference/       <- /teach
       learning-records/ assets/                                  <- /teach
       probes/ palaces/                                           <- /teach, for this app
+      notes/0001-....md                                          <- you, through the app
       CLAUDE.md PLACES.md                                        <- the app
       .learn/reviews.jsonl .learn/struggles.jsonl                <- append-only logs
+      .learn/ask-sessions.jsonl                                  <- which session each Ask thread is
   docs/adr/           why it is built this way
   CONTEXT.md          the vocabulary
 ```
 
 ## Why it looks like this
 
-Twelve decisions are written down in `docs/adr/`, most of them against the obvious
+Sixteen decisions are written down in `docs/adr/`, most of them against the obvious
 alternative. The short version:
 
 - **Probes have no back.** Free recall beats cued recall on delayed retention, so a flippable
@@ -169,12 +191,33 @@ alternative. The short version:
   choosing the next lesson. ([ADR 0006](docs/adr/0006-all-state-as-plain-files-in-the-workspace.md))
 - **No Claude, no review.** A degraded offline mode is a second product, and delayed feedback
   is weakest exactly for wrong answers. ([ADR 0010](docs/adr/0010-the-claude-call-envelope.md))
+- **A lesson is never modified to annotate it.** Rendering lesson HTML into React kills its
+  scripts, so it is framed as-is and highlights are ranges, not markup.
+  ([ADR 0014](docs/adr/0014-lessons-are-annotated-without-being-touched.md))
+- **Ask is a real session, grading still is not.** A question about the paragraph in front of
+  you is not the same job as grading one answer, and queueing it to the terminal is not a
+  smaller version of the feature. ([ADR 0015](docs/adr/0015-ask-is-a-real-claude-session.md))
+- **The contract is rewritten on every workspace-page view.** Scaffolding it once froze it at
+  whatever the template said that day.
+  ([ADR 0016](docs/adr/0016-the-workspace-contract-is-resynced-on-view.md))
 
 ## Known weak joint
 
 Probe authoring is instruction-following, not enforcement. A session can simply not write them.
 The app detects lessons with no probes and surfaces them on the topic page, but it cannot make
 the contract binding.
+
+## Updating
+
+```bash
+claude          # in the repo root
+/update-learnapp
+```
+
+It refuses on a dirty tree rather than stashing your work, pulls, installs, runs the tests
+and the build, and tells you what changed — new ADRs, contract changes, new dependencies.
+`workspaces/` and `PLACES.md` are gitignored and are never touched; each workspace's
+`CLAUDE.md` refreshes itself the next time you open its page.
 
 ## Tests
 
@@ -183,8 +226,9 @@ npm test
 ```
 
 Covers the parts that would break silently: the verdict-to-FSRS mapping, replaying
-the review log into card state, session interleaving, anchored section extraction, and the
-locale fallback and plural agreement behind the language toggle.
+the review log into card state, session interleaving, anchored section extraction, the note
+file surviving a round trip through the parser, finding a passage again after the lesson
+moved it, and the locale fallback and plural agreement behind the language toggle.
 
 ## License
 

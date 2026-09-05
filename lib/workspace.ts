@@ -1,7 +1,9 @@
-import { mkdir, readFile, readdir, writeFile, access } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, writeFile, access } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { PLACES_FILE, ROOT, WORKSPACES, inWorkspace, reviewsLog, strugglesLog, workspaceName, wsDir } from "./paths";
+import { PLACES_FILE, ROOT, WORKSPACES, inWorkspace, lessonName, reviewsLog, strugglesLog, workspaceName, wsDir } from "./paths";
 import { read } from "./jsonl";
+import { emptyNote, parseNote, serialiseNote, type Note } from "./notes";
 import { claimedRoutes, loadPalaces, loadProbes, type Palace } from "./probes";
 import { isDue, replay, retrievability, type ReviewEvent } from "./scheduler";
 
@@ -124,12 +126,31 @@ export async function create(name: string): Promise<void> {
   // the caller's language.
   if (await exists(dir)) throw new Error("exists");
 
-  for (const sub of ["lessons", "reference", "learning-records", "assets", "probes", "palaces", ".learn"]) {
+  for (const sub of ["lessons", "reference", "learning-records", "assets", "probes", "palaces", "notes", ".learn"]) {
     await mkdir(path.join(dir, sub), { recursive: true });
   }
-  const template = await readFile(path.join(ROOT, "templates", "CLAUDE.md"), "utf8");
-  await writeFile(path.join(dir, "CLAUDE.md"), template, "utf8");
+  await syncContract(ws);
   await syncPlaces(ws);
+}
+
+/**
+ * The contract is app-owned, so it is rewritten from the template whenever the
+ * Workspace page is looked at (ADR 0016). Scaffolding it once froze it at
+ * whatever the template said the day the Workspace was made, which would have
+ * left every change — Notes first among them — reaching new Workspaces only.
+ * Unchanged content is not written, so a page view does not churn mtimes.
+ */
+export async function syncContract(ws: string): Promise<void> {
+  const template = await readFile(path.join(ROOT, "templates", "CLAUDE.md"), "utf8");
+  const file = inWorkspace(ws, "CLAUDE.md");
+  try {
+    if ((await readFile(file, "utf8")) === template) return;
+  } catch (err) {
+    // No contract yet is ordinary — a Workspace being created, or one made by
+    // hand. Anything else means we cannot see the file we are about to replace.
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;
+  }
+  await writeFile(file, template, "utf8");
 }
 
 /**
@@ -164,4 +185,57 @@ export async function listLessons(ws: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+/* --- Notes (ADR 0013). The format itself is in lib/notes.ts. ------------- */
+
+export function notePath(ws: string, lesson: string): string {
+  return inWorkspace(ws, `notes/${lessonName(lesson)}.md`);
+}
+
+/** A Workspace with no `notes/` has no Notes yet, which is not an error. */
+export async function loadNote(ws: string, lesson: string): Promise<Note> {
+  try {
+    return parseNote(await readFile(notePath(ws, lesson), "utf8"));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return emptyNote();
+    throw err;
+  }
+}
+
+/**
+ * Written beside the target and renamed over it, so a failed or interrupted
+ * write cannot leave someone holding half a Note. The name is unique per write:
+ * the dev server is one process, so a shared temp path would let two concurrent
+ * saves of the same Note interleave into one torn file. `notes/` is created on
+ * the first write — Workspaces made before this feature existed never had one.
+ */
+export async function saveNote(ws: string, lesson: string, note: Note): Promise<void> {
+  const file = notePath(ws, lesson);
+  await mkdir(path.dirname(file), { recursive: true });
+  const temp = `${file}.${randomUUID()}.tmp`;
+  await writeFile(temp, serialiseNote(note), "utf8");
+  await rename(temp, file);
+}
+
+export type NoteSummary = { lesson: string; count: number };
+
+export async function listNotes(ws: string): Promise<NoteSummary[]> {
+  let files: string[];
+  try {
+    files = (await readdir(inWorkspace(ws, "notes"))).filter((n) => n.endsWith(".md"));
+  } catch {
+    return [];
+  }
+
+  const out: NoteSummary[] = [];
+  for (const file of files.sort()) {
+    try {
+      const md = await readFile(inWorkspace(ws, `notes/${file}`), "utf8");
+      out.push({ lesson: file.slice(0, -3), count: parseNote(md).annotations.length });
+    } catch {
+      // A half-written temp file or something that is not ours. Skip it.
+    }
+  }
+  return out;
 }

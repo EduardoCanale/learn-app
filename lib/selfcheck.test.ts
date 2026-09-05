@@ -2,7 +2,9 @@ import { strict as assert } from "node:assert";
 import test from "node:test";
 import { Rating, State } from "ts-fsrs";
 
+import { flatten, resolve } from "./anchor.ts";
 import { dict, toLocale } from "./i18n.ts";
+import { parseNote, serialiseNote } from "./notes.ts";
 import { interleave, isDue, ratingFor, replay, type ReviewEvent } from "./scheduler.ts";
 import { sliceSection, toText } from "./source.ts";
 
@@ -88,6 +90,66 @@ test("a missing anchor degrades to the whole lesson rather than nothing", () => 
   assert.match(toText(sliceSection(html, "gone")), /Content/);
 });
 
+test("a Note round-trips, keeping free prose and a marker it cannot read", () => {
+  const md = [
+    "# Notes — 0001 int is not number",
+    "",
+    "Something I wrote before selecting anything.",
+    "",
+    '<!-- a {"id":"k3f9","at":"2026-09-04T18:22:10Z","kind":"note","quote":"thrown away",' +
+      '"prefix":"the extra bits are ","suffix":" without a word","start":1412,"end":1423} -->',
+    "> thrown away",
+    "",
+    "No exception, no widening, just wrap.",
+    "",
+    "<!-- a {not json} -->",
+    "Which makes this prose, not an entry.",
+    "",
+  ].join("\n");
+
+  const note = parseNote(md);
+  assert.equal(note.annotations.length, 1);
+  assert.equal(note.annotations[0].anchor.start, 1412);
+  assert.match(note.preamble, /before selecting anything/, "prose above the first marker is kept");
+  assert.match(note.annotations[0].body, /just wrap/);
+  assert.match(
+    note.annotations[0].body,
+    /not an entry/,
+    "a marker that will not parse costs nobody their writing",
+  );
+
+  assert.deepEqual(parseNote(serialiseNote(note)), note);
+});
+
+test("an Anchor finds the copy its context matches, and null once the quote is gone", () => {
+  // Through `flatten`, which is the normaliser both capture and resolution use.
+  const flat = flatten(
+    "The interval is three semitones and that is that.\n" +
+      "  Later the interval is  three semitones on the sixth string.",
+  ).text;
+  assert.equal(flat.includes("  "), false, "one whitespace rule, applied");
+  const at = flat.lastIndexOf("three semitones");
+  const anchor = {
+    quote: "three semitones",
+    prefix: flat.slice(at - 32, at),
+    suffix: flat.slice(at + 15, at + 47),
+    start: at,
+    end: at + 15,
+  };
+
+  assert.equal(resolve(flat, anchor), at, "prefix and suffix pick the second copy");
+
+  // The position is only a hint. Text moving in front of the Passage must not
+  // hand the Annotation to the wrong copy.
+  const moved = "One more sentence in front. " + flat;
+  assert.equal(resolve(moved, anchor), moved.lastIndexOf("three semitones"));
+
+  // With no context left, the hint is all there is.
+  assert.equal(resolve(flat, { ...anchor, prefix: "", suffix: "" }), at);
+
+  assert.equal(resolve("Nothing of the sort in here.", anchor), null);
+});
+
 test("an unrecognised locale cookie falls back to English", () => {
   assert.equal(toLocale("es"), "es");
   assert.equal(toLocale("en"), "en");
@@ -104,4 +166,8 @@ test("counted strings agree on singular and plural in both languages", () => {
   assert.equal(dict.en.recallProbes(1), "Recall 1 probe");
   assert.equal(dict.es.recallProbes(1), "Recordar 1 prueba");
   assert.equal(dict.es.recallProbes(4), "Recordar 4 pruebas");
+  assert.equal(dict.en.noteCount(1), "1 note");
+  assert.equal(dict.en.noteCount(3), "3 notes");
+  assert.equal(dict.es.noteCount(1), "1 apunte");
+  assert.equal(dict.es.noteCount(3), "3 apuntes");
 });
