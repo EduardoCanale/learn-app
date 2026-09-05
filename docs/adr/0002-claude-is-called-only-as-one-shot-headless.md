@@ -1,3 +1,7 @@
+---
+status: superseded by ADR 0015 — still true of grading; Ask is a real session
+---
+
 # The app calls Claude only as one-shot headless invocations
 
 Review needs intelligence: a lapse is either a Retrieval failure or a Comprehension failure, and the two deserve different responses. Only Claude can tell them apart from a free-recall answer. But letting the app hold a Claude *session* drags in streaming, resume, permission prompts and long-running job UI — the browser-drives-everything design we rejected.

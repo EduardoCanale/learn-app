@@ -73,6 +73,17 @@ const en = {
   noteLoadFailed:
     "Couldn't read this lesson's notes, so nothing will be saved over them. Reload the page.",
 
+  // ask
+  askClaude: "Ask",
+  askPlaceholder: "What don't you follow about this passage?",
+  askSend: "Send",
+  asking: "Asking…",
+  askEmpty: "Select a passage and ask about it. The thread lasts as long as the lesson.",
+  askNotHere: "Ask works on lessons, not on reference pages.",
+  keepAnswer: "Keep in notes",
+  keptAnswer: "Kept",
+  askFailed: "Can't reach Claude, so this can't be answered. Try again.",
+
   // review
   leave: "Leave",
   nothingDueFaded: "Nothing due. Come back when something has had time to fade.",
@@ -193,6 +204,16 @@ const es: typeof en = {
   noteSaveFailed: "No se guardó. Lo que escribiste sigue aquí — inténtalo otra vez.",
   noteLoadFailed:
     "No se pudieron leer los apuntes de esta lección, así que no se escribirá nada encima. Recarga la página.",
+
+  askClaude: "Preguntar",
+  askPlaceholder: "¿Qué no te encaja de este fragmento?",
+  askSend: "Enviar",
+  asking: "Preguntando…",
+  askEmpty: "Selecciona un fragmento y pregunta sobre él. El hilo dura lo que dure la lección.",
+  askNotHere: "Preguntar funciona en las lecciones, no en las páginas de referencia.",
+  keepAnswer: "Guardar en apuntes",
+  keptAnswer: "Guardado",
+  askFailed: "No se puede contactar con Claude, así que esto no se puede responder. Inténtalo otra vez.",
 
   leave: "Salir",
   nothingDueFaded: "Nada pendiente. Vuelve cuando algo haya tenido tiempo de desvanecerse.",

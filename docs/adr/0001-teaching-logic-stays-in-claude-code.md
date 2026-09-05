@@ -1,3 +1,7 @@
+---
+status: accepted — amended by ADR 0015 (Ask may explain a Passage; it still authors nothing)
+---
+
 # Teaching logic stays in Claude Code; the app owns scheduling and the palace
 
 The obvious build for a learning app is to put the pedagogy in the app. We are doing the opposite. `/teach` already encodes the methodology — mission-grounding, zone of proximal development, fluency vs storage strength — and it runs in Claude Code where the conversation is already good. Rebuilding that as a web chat UI would mean reimplementing session resume, streaming, tool rendering and permissions to arrive somewhere worse.

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { AskChunk, AskTurn } from "@/lib/ask";
 import { anchorAt, flatten, resolve, type Anchor } from "@/lib/anchor";
 import { dict, type Locale } from "@/lib/i18n";
 import {
@@ -19,6 +20,13 @@ type Index = { text: string; from: number[]; pieces: Piece[] };
 /** An Annotation and where its Passage is now, or null if the Lesson lost it.
  *  `at` on an Annotation is when it was written; `offset` is where it points. */
 type Placed = Annotation & { offset: number | null };
+
+/**
+ * A turn in the Ask thread. A turn asked in this session carries the Anchor the
+ * question was actually about; one read back out of the transcript has only the
+ * words, because that is all the transcript kept.
+ */
+type Turn = AskTurn & { anchor?: Anchor };
 
 /**
  * The only thing the app puts inside a Lesson. Highlights themselves are
@@ -45,6 +53,7 @@ export default function LessonReader({
   const t = dict[locale];
   const frame = useRef<HTMLIFrameElement>(null);
   const index = useRef<Index | null>(null);
+  const askBox = useRef<HTMLTextAreaElement>(null);
 
   // The Lesson the iframe is actually showing, which changes under us when a
   // sibling link inside the document is followed.
@@ -66,6 +75,13 @@ export default function LessonReader({
   const [focus, setFocus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [tab, setTab] = useState<"notes" | "ask">("notes");
+  const [turns, setTurns] = useState<Turn[]>([]);
+  const [question, setQuestion] = useState("");
+  const [asking, setAsking] = useState(false);
+  const [kept, setKept] = useState<number[]>([]);
+  const [askAbout, setAskAbout] = useState<Anchor | null>(null);
 
   const paint = useCallback((annotations: Annotation[], focused: string | null): Placed[] => {
     const doc = frame.current?.contentDocument;
@@ -103,8 +119,20 @@ export default function LessonReader({
     setPassage(capture(frame.current, index.current));
   }, []);
 
+  /** The thread lives in the Claude session, so it is read back out of it. */
+  const loadThread = useCallback(
+    async (which: string) => {
+      const res = await fetch(`/api/ws/${ws}/ask?lesson=${encodeURIComponent(which)}`).catch(() => null);
+      const body = res?.ok ? ((await res.json().catch(() => null)) as { turns?: AskTurn[] } | null) : null;
+      setTurns(body?.turns ?? []);
+    },
+    [ws],
+  );
+
   const reload = useCallback(
     async (next: string | null) => {
+      setTurns([]);
+      setKept([]);
       setStale(false);
       setCurrent(emptyNote());
       if (!next) return;
@@ -119,8 +147,9 @@ export default function LessonReader({
         return;
       }
       setCurrent(body);
+      await loadThread(next);
     },
-    [ws, t],
+    [ws, loadThread, t],
   );
 
   const onLessonReady = useCallback(() => {
@@ -140,6 +169,7 @@ export default function LessonReader({
     setDraft(null);
     setEditing(null);
     setFocus(null);
+    setAskAbout(null);
     setError(null);
 
     // A sibling link inside the Lesson navigates the iframe, so which Lesson we
@@ -152,6 +182,16 @@ export default function LessonReader({
     }
     setLoads((n) => n + 1);
   }, [onSelectionChange, reload, ws]);
+
+  useEffect(() => {
+    if (lesson) void loadThread(lesson);
+  }, [lesson, loadThread]);
+
+  // Asking about a passage means the box you type in has to be in front of you,
+  // and the panel may be scrolled a long way down a thread.
+  useEffect(() => {
+    if (askAbout) askBox.current?.focus();
+  }, [askAbout]);
 
   useEffect(() => {
     const iframe = frame.current;
@@ -211,6 +251,75 @@ export default function LessonReader({
     await save({ ...current, annotations: current.annotations.filter((x) => x.id !== a.id) });
   }
 
+  async function send() {
+    if (!showing || asking || !question.trim()) return;
+    // A follow-up with no fresh selection stays on the passage the thread is about.
+    const anchor = askAbout ?? turns.at(-1)?.anchor;
+    const quote = anchor?.quote ?? turns.at(-1)?.quote ?? "";
+    const asked = question.trim();
+
+    setAsking(true);
+    setError(null);
+    setQuestion("");
+    setTurns((all) => [...all, { quote, question: asked, answer: "", anchor }]);
+
+    const res = await fetch(`/api/ws/${ws}/ask`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lesson: showing, question: asked, quote }),
+    }).catch(() => null);
+
+    if (!res?.ok || !res.body) {
+      setAsking(false);
+      setError(t.askFailed);
+      return;
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      // The last piece is whatever arrived without its newline yet.
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let chunk: AskChunk;
+        try {
+          chunk = JSON.parse(line) as AskChunk;
+        } catch {
+          continue;
+        }
+        if (chunk.type === "text") {
+          const { text } = chunk;
+          setTurns((all) => all.map((turn, i) => (i === all.length - 1 ? { ...turn, answer: turn.answer + text } : turn)));
+        }
+        if (chunk.type === "error") setError(t.askFailed);
+      }
+    }
+    setAsking(false);
+  }
+
+  /** Nothing is written to the Note until this is pressed (ADR 0015). */
+  async function keep(i: number) {
+    const turn = turns[i];
+    const ix = index.current;
+    if (!showing || !turn?.answer.trim()) return;
+
+    // A turn asked in this session already holds the Anchor the question was
+    // about — including which of two identical passages it was. Only a turn
+    // rehydrated from the transcript has to go looking.
+    const anchor = turn.anchor ?? (ix && anchorFor(ix, turn.quote));
+    if (!anchor) return setError(t.passageMoved);
+
+    const prose = `**Q:** ${turn.question}\n\n**A:** ${turn.answer.trim()}`;
+    const ok = await save(withAnnotation(current, showing, { kind: "ask", anchor, prose }));
+    if (ok) setKept((all) => [...all, i]);
+  }
+
   function reveal(a: Placed) {
     setFocus(a.id);
     const doc = frame.current?.contentDocument;
@@ -241,20 +350,94 @@ export default function LessonReader({
                 setDraft(passage.anchor);
                 setEditing(null);
                 setProse("");
+                setTab("notes");
               }}
             >
               {t.addNote}
+            </button>
+            <button
+              onClick={() => {
+                setAskAbout(passage.anchor);
+                setPassage(null);
+                setTab("ask");
+              }}
+            >
+              {t.askClaude}
             </button>
           </div>
         )}
       </div>
 
       <aside className="panel reader-panel">
-        <h2>
-          {t.notes}
-          {showing && placed.length > 0 && <span className="note"> {t.noteCount(placed.length)}</span>}
-        </h2>
+        <div className="reader-tabs">
+          <button
+            aria-pressed={tab === "notes"}
+            className={tab === "notes" ? undefined : "quiet"}
+            onClick={() => setTab("notes")}
+          >
+            {t.notes}
+            {placed.length > 0 && ` · ${placed.length}`}
+          </button>
+          <button
+            aria-pressed={tab === "ask"}
+            className={tab === "ask" ? undefined : "quiet"}
+            onClick={() => setTab("ask")}
+          >
+            {t.askClaude}
+            {turns.length > 0 && ` · ${turns.length}`}
+          </button>
+        </div>
 
+        {tab === "ask" ? (
+          <>
+            {!showing && <p className="note">{t.askNotHere}</p>}
+            {showing && turns.length === 0 && <p className="note">{t.askEmpty}</p>}
+
+            <ol className="plain">
+              {turns.map((turn, i) => (
+                <li key={i} className="entry-note">
+                  {turn.quote && <blockquote>{turn.quote}</blockquote>}
+                  <p className="ask-q">{turn.question}</p>
+                  <p className="ask-a">
+                    {turn.answer || (asking && i === turns.length - 1 ? t.asking : "")}
+                  </p>
+                  {turn.answer.trim() && !(asking && i === turns.length - 1) && (
+                    <div className="row">
+                      <button className="quiet" onClick={() => keep(i)} disabled={busy || kept.includes(i)}>
+                        {kept.includes(i) ? t.keptAnswer : t.keepAnswer}
+                      </button>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ol>
+
+            {showing && (
+              <>
+                {askAbout && <blockquote className="ask-about">{askAbout.quote}</blockquote>}
+                <textarea
+                  ref={askBox}
+                  value={question}
+                  onChange={(e) => setQuestion(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void send();
+                  }}
+                  placeholder={t.askPlaceholder}
+                  aria-label={t.askClaude}
+                  disabled={asking}
+                />
+                <div className="row">
+                  <button onClick={() => void send()} disabled={asking || !question.trim()}>
+                    {asking ? t.asking : t.askSend}
+                  </button>
+                  <span className="hint-key">⌘↵</span>
+                </div>
+              </>
+            )}
+
+          </>
+        ) : (
+          <>
         {!showing && <p className="note">{t.noNotesHere}</p>}
 
         {draft && (
@@ -324,6 +507,8 @@ export default function LessonReader({
         </ul>
 
         {error && <p className="warn">{error}</p>}
+          </>
+        )}
       </aside>
     </div>
   );
@@ -393,6 +578,18 @@ function rawAt(ix: Index, node: Node, offset: number, side: "start" | "end"): nu
   if (inside.length === 0) return null;
   const edge = side === "start" ? inside[0] : inside[inside.length - 1];
   return side === "start" ? edge.start : edge.start + edge.node.data.length;
+}
+
+/**
+ * An Anchor for a quote that is already known, used when keeping an answer from
+ * a thread that was rehydrated: the transcript recorded only the words, so the
+ * position and the context come from the document as it stands now. A turn
+ * asked in this session keeps its real Anchor and never comes here.
+ */
+function anchorFor(ix: Index, quote: string): Anchor | null {
+  const wanted = quote.trim();
+  const start = wanted ? ix.text.indexOf(wanted) : -1;
+  return start === -1 ? null : anchorAt(ix.text, start, start + wanted.length);
 }
 
 function rangeFor(ix: Index, doc: Document, at: number, length: number): Range | null {
