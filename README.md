@@ -75,8 +75,8 @@ The session writes `MISSION.md`, lessons, and the probes that become your review
 probes due. Hit **Recall** and type each answer from memory — no card to flip. Claude grades
 it against the lesson, hints until you produce it yourself, and reschedules.
 
-Chrome is English or Spanish, toggle bottom right. Lessons and grading stay in the
-material's own language.
+Chrome is English or Spanish, and light, dark or whatever your OS says. Both toggles sit
+bottom right; each is remembered. Lessons and grading stay in the material's own language.
 
 ## The daily loop
 
@@ -172,6 +172,9 @@ learn-app/
       .learn/reviews.jsonl .learn/struggles.jsonl                <- append-only logs
       .learn/ask-sessions.jsonl                                  <- which session each Ask thread is
   docs/adr/           why it is built this way
+  docs/plans/         what was built, and what was left
+  types/              the DOM declarations TypeScript is missing for the reader
+  .claude/commands/   /update-learnapp, the updater below
   CONTEXT.md          the vocabulary
 ```
 
