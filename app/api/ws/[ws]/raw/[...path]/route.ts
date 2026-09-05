@@ -3,7 +3,9 @@ import path from "node:path";
 import { inWorkspace } from "@/lib/paths";
 
 // Lessons are self-contained HTML that /teach wrote to be read on their own, so
-// they are served raw into a new tab rather than reframed by this app.
+// they are served exactly as written and wrapped in a same-origin iframe rather
+// than reframed into React, which would kill their scripts (ADR 0014). Relative
+// links inside a Lesson resolve back onto this same route.
 const TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",

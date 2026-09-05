@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getStrings } from "@/lib/i18n.server";
 import { loadPalaces } from "@/lib/probes";
-import { listLessons, openStruggles, summarise, syncPlaces } from "@/lib/workspace";
+import { listLessons, listNotes, openStruggles, summarise, syncPlaces } from "@/lib/workspace";
 
 export const dynamic = "force-dynamic";
 
@@ -10,16 +10,17 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
   const { ws } = await params;
   const t = await getStrings();
 
-  let summary, palaces, lessons, struggles;
+  let summary, palaces, lessons, struggles, notes;
   try {
     // Route claims are global, so they are recomputed and written into this
     // workspace's PLACES.md whenever you look at it.
     await syncPlaces(ws);
-    [summary, palaces, lessons, struggles] = await Promise.all([
+    [summary, palaces, lessons, struggles, notes] = await Promise.all([
       summarise(ws),
       loadPalaces(ws),
       listLessons(ws),
       openStruggles(ws),
+      listNotes(ws),
     ]);
   } catch {
     notFound();
@@ -111,15 +112,29 @@ export default async function Workspace({ params }: { params: Promise<{ ws: stri
         </section>
       )}
 
+      {notes.length > 0 && (
+        <section className="panel">
+          <h2>{t.notes}</h2>
+          <ul className="plain">
+            {notes.map((n) => (
+              <li key={n.lesson}>
+                <Link href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(n.lesson)}.html`}>
+                  {n.lesson}
+                </Link>{" "}
+                <span className="note">{t.noteCount(n.count)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {lessons.length > 0 && (
         <section className="panel">
           <h2>{t.lessons}</h2>
           <ul className="plain">
             {lessons.map((l) => (
               <li key={l}>
-                <a href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(l)}`} target="_blank" rel="noreferrer">
-                  {l}
-                </a>
+                <Link href={`/ws/${summary.name}/lesson/lessons/${encodeURIComponent(l)}`}>{l}</Link>
               </li>
             ))}
           </ul>

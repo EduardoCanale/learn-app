@@ -1,7 +1,8 @@
-import { mkdir, readFile, readdir, writeFile, access } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, writeFile, access } from "node:fs/promises";
 import path from "node:path";
-import { PLACES_FILE, ROOT, WORKSPACES, inWorkspace, reviewsLog, strugglesLog, workspaceName, wsDir } from "./paths";
+import { PLACES_FILE, ROOT, WORKSPACES, inWorkspace, lessonName, reviewsLog, strugglesLog, workspaceName, wsDir } from "./paths";
 import { read } from "./jsonl";
+import { emptyNote, parseNote, serialiseNote, type Note } from "./notes";
 import { claimedRoutes, loadPalaces, loadProbes, type Palace } from "./probes";
 import { isDue, replay, retrievability, type ReviewEvent } from "./scheduler";
 
@@ -124,7 +125,7 @@ export async function create(name: string): Promise<void> {
   // the caller's language.
   if (await exists(dir)) throw new Error("exists");
 
-  for (const sub of ["lessons", "reference", "learning-records", "assets", "probes", "palaces", ".learn"]) {
+  for (const sub of ["lessons", "reference", "learning-records", "assets", "probes", "palaces", "notes", ".learn"]) {
     await mkdir(path.join(dir, sub), { recursive: true });
   }
   const template = await readFile(path.join(ROOT, "templates", "CLAUDE.md"), "utf8");
@@ -164,4 +165,55 @@ export async function listLessons(ws: string): Promise<string[]> {
   } catch {
     return [];
   }
+}
+
+/* --- Notes (ADR 0013). The format itself is in lib/notes.ts. ------------- */
+
+export function notePath(ws: string, lesson: string): string {
+  return inWorkspace(ws, `notes/${lessonName(lesson)}.md`);
+}
+
+/** A Workspace with no `notes/` has no Notes yet, which is not an error. */
+export async function loadNote(ws: string, lesson: string): Promise<Note> {
+  try {
+    return parseNote(await readFile(notePath(ws, lesson), "utf8"));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === "ENOENT") return emptyNote();
+    throw err;
+  }
+}
+
+/**
+ * Written beside the target and renamed over it, so a crash mid-write cannot
+ * leave someone with half a Note. `notes/` is created on the first write —
+ * Workspaces made before this feature existed never had one.
+ */
+export async function saveNote(ws: string, lesson: string, note: Note): Promise<void> {
+  const file = notePath(ws, lesson);
+  await mkdir(path.dirname(file), { recursive: true });
+  const temp = `${file}.${process.pid}.tmp`;
+  await writeFile(temp, serialiseNote(note), "utf8");
+  await rename(temp, file);
+}
+
+export type NoteSummary = { lesson: string; count: number };
+
+export async function listNotes(ws: string): Promise<NoteSummary[]> {
+  let files: string[];
+  try {
+    files = (await readdir(inWorkspace(ws, "notes"))).filter((n) => n.endsWith(".md"));
+  } catch {
+    return [];
+  }
+
+  const out: NoteSummary[] = [];
+  for (const file of files.sort()) {
+    try {
+      const md = await readFile(inWorkspace(ws, `notes/${file}`), "utf8");
+      out.push({ lesson: file.slice(0, -3), count: parseNote(md).annotations.length });
+    } catch {
+      // A half-written temp file or something that is not ours. Skip it.
+    }
+  }
+  return out;
 }

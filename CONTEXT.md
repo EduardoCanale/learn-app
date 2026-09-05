@@ -59,3 +59,27 @@ _Avoid_: Hint, clue, help
 **Close**:
 Ending a failed Probe by producing a correct answer yourself, after a Scaffold or a Repair. A Probe that was merely explained is not Closed, because the error was never overwritten by a correct retrieval.
 _Avoid_: Complete, finish, pass
+
+**Note**:
+The student's own writing about one Lesson, kept as a single file that only the student's actions change. Distinct from the Working notes `/teach` keeps about how to teach them.
+_Avoid_: Notes file, annotations file, journal
+
+**Working notes**:
+`NOTES.md` — Claude's scratchpad about the learner: their preferences, the teaching decisions taken, the questions still open. Owned by `/teach`, never by the student.
+_Avoid_: Notes
+
+**Annotation**:
+One entry in a Note: a Passage, and either what the student wrote about it or an Ask answer they chose to keep.
+_Avoid_: Comment, highlight, entry, mark
+
+**Passage**:
+The span of a Lesson an Annotation or an Ask is about. Always a contiguous run of text the student selected.
+_Avoid_: Selection, range, excerpt
+
+**Anchor**:
+How a Passage is found again in its Lesson: the quoted text with the words either side of it, plus a character position. The quote is what makes it survive the Lesson being rewritten; the position is only a hint that makes the search cheap.
+_Avoid_: Reference, pointer, location, offset
+
+**Ask**:
+A question the student puts to Claude about a Passage, answered in a thread that lasts as long as the Lesson. Bounded to the passage in front of them — an Ask cannot author a Lesson, a Probe or a Palace.
+_Avoid_: Chat, conversation, query

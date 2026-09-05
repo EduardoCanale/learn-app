@@ -55,6 +55,21 @@ const en = {
   palaces: "Palaces",
   routeLoci: (route: string, loci: number) => `— ${route}, ${loci} loci`,
   lessons: "Lessons",
+  noteCount: (n: number) => `${n} ${n === 1 ? "note" : "notes"}`,
+
+  // the lesson reader
+  notes: "Notes",
+  noNotesYet: "Nothing yet. Select a passage in the lesson to write about it.",
+  noNotesHere: "This isn't a lesson, so it has no notes.",
+  addNote: "Note",
+  notePlaceholder: "What you made of it. Yours — Claude reads these before teaching you next.",
+  saveNote: "Save",
+  cancel: "Cancel",
+  editNote: "Edit",
+  deleteNote: "Delete",
+  deleteNoteConfirm: "Delete this note? It cannot be undone.",
+  passageMoved: "The lesson no longer contains this passage.",
+  noteSaveFailed: "That did not save. Your writing is still here — try again.",
 
   // review
   leave: "Leave",
@@ -160,6 +175,20 @@ const es: typeof en = {
   palaces: "Palacios",
   routeLoci: (route, loci) => `— ${route}, ${loci} loci`,
   lessons: "Lecciones",
+  noteCount: (n) => `${n} ${n === 1 ? "apunte" : "apuntes"}`,
+
+  notes: "Apuntes",
+  noNotesYet: "Todavía nada. Selecciona un fragmento de la lección para escribir sobre él.",
+  noNotesHere: "Esto no es una lección, así que no tiene apuntes.",
+  addNote: "Apunte",
+  notePlaceholder: "Lo que sacaste en claro. Es tuyo — Claude lo lee antes de enseñarte lo siguiente.",
+  saveNote: "Guardar",
+  cancel: "Cancelar",
+  editNote: "Editar",
+  deleteNote: "Borrar",
+  deleteNoteConfirm: "¿Borrar este apunte? No se puede deshacer.",
+  passageMoved: "La lección ya no contiene este fragmento.",
+  noteSaveFailed: "No se guardó. Lo que escribiste sigue aquí — inténtalo otra vez.",
 
   leave: "Salir",
   nothingDueFaded: "Nada pendiente. Vuelve cuando algo haya tenido tiempo de desvanecerse.",

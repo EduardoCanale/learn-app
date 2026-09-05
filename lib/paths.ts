@@ -12,6 +12,12 @@ export function workspaceName(raw: string): string {
   return raw;
 }
 
+/** Lesson basenames arrive from URLs too, and they name a file we open. */
+export function lessonName(raw: string): string {
+  if (!SLUG.test(raw)) throw new Error(`Not a lesson name: ${raw}`);
+  return raw;
+}
+
 export function wsDir(raw: string): string {
   return path.join(WORKSPACES, workspaceName(raw));
 }
